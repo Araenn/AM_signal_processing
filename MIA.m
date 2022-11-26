@@ -15,14 +15,12 @@ delay = mean(abs(delay));
 
 t = (0:length(h)-1)';
 
+
 %% Deuxieme etape : Amplitudes a
-r = randn(length(n), 1); %generation sequences aleatoires
+r = sign(randn(100, 1)); %generation sequences aleatoires
 
 
-for i = 1:K:length(n)
-    a(i) = sign(r(i));
-end
-
+a = upsample(r, K);
 
 figure(1)
 stem(t, h)
@@ -41,7 +39,7 @@ ylabel("Amplitude")
 %% Troisieme etape : Application du filtre au signal d'amplitude
 figure(3)
 h = [h; zeros(length(h), 1)];
-a = [a'; zeros(length(a), 1)];
+a = [a; zeros(length(a), 1)];
 s = filter(h, 1, a);
 sb = s;
 sb(1:delay) = [];
@@ -75,10 +73,11 @@ ylabel("Energie (dB)")
 %peu importe si pas gain a 0dB, car deja impossible si gain (h) et energie
 %(a) constantes non = 1, ca se multiplie avec la conv
 %% Quatrieme etape : Demodulation
-for i = 1:K:length(n)
-    A(i) = sign(sb(i)); %sb car sans retard de groupe, sign pour arrondir a 1 ou -1 (ici pas besoin car parfait)
-end
-
+% for i = 1:K:length(n)
+%     A(i) = sign(sb(i)); %sb car sans retard de groupe, sign pour arrondir a 1 ou -1 (ici pas besoin car parfait)
+% end
+A = downsample(sb, K);
+A = A(1:length(r));
 figure(5)
 stem(A)
 grid()
@@ -88,7 +87,7 @@ ylabel("Amplitude")
 
 %% Calcul des erreurs
 seuilErreur = 10^-15;
-e = abs(A-a(1:length(n))');
+e = abs(A-r);
 nbErr = 0;
 for i = 1:length(e)
     if e(i) < seuilErreur
@@ -100,7 +99,7 @@ for i = 1:length(e)
     end
 end
 
-tauxErreur = nbErr/(length(e));
+tauxErreur = nbErr/(length(e))*100;
 
 figure(6)
 stem(e, 'x')

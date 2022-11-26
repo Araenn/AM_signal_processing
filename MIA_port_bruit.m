@@ -12,12 +12,13 @@ n0 = 0.2;
 dn = 0.03;
 k = 500;
 
+sigma = 0.08;
+
 %% Premiere etape : Filtre d'emission h
 h = sinc(2*fc*(n - 2*n)); %filtre d'emission tronque
 port = cos(2*pi*n0*np);
-port2 = cos(2*pi*(n0+dn)*np);
-port3 = cos(2*pi*(n0-dn)*np);
-
+port2 = cos(2*pi*(n0-dn)*np);
+port3 = cos(2*pi*(n0+dn)*np);
 delay = grpdelay(h, 1, k); %calcul du retard de groupe
 delay = mean(abs(delay));
 
@@ -31,6 +32,7 @@ r3 = sign(randn(longueurSequence, 1));
 a = upsample(r1, K);
 b = upsample(r2, K);
 c = upsample(r3, K);
+
 
 figure(1)
 stem(t, h)
@@ -56,26 +58,27 @@ a = [a; zeros(length(a), 1)];
 b = [b; zeros(length(b), 1)];
 c = [c; zeros(length(c), 1)];
 
-sa1 = filter(h, 1, a); %signal module h et a
+sa1 = filter(h, 1, a);
 
 sA1 = sa1 .* port; %on multiplie a la porteuse
 sA2 = sA1;
 sA2(1:delay) = [];
 
-sb1 = filter(h, 1, b); %signal module h et b
+sb1 = filter(h, 1, b);
 
 sB1 = sb1 .* port2; %on multiplie a la porteuse
 sB2 = sB1;
 sB2(1:delay) = [];
 
-sc1 = filter(h, 1, c); %signal module h et c
+sc1 = filter(h, 1, c);
 
 sC1 = sc1 .* port3; %on multiplie a la porteuse
 sC2 = sC1;
 sC2(1:delay) = [];
 
+bruit = sigma*randn(length(sA1), 1);
+sFinal = sA1 + sB1 + sC1 + bruit;
 
-sFinal = sA1 + sB1 + sC1;
 hold on
 plot(sA2, 'b') %signal module avec porteuse 
 stem(a, 'b', 'LineWidth', 2)
@@ -110,7 +113,7 @@ xlabel("Fréquences numériques")
 ylabel("Energie (dB)")
 
 %% Quatrieme etape : Demodulation
-demod = sFinal .* port;
+demod = sFinal .* port; %on ne veut que le canal central
 demod2 = demod;
 demod2(1:delay) = [];
 
@@ -124,22 +127,19 @@ plot(f, tftd_sf)
 plot(f, tftd_demod)
 legend("Filtre d'emission", "Signal recu", "Signal recu * porteuse")
 grid()
-title("Spectre du signal modulé multiplié par la porteuse")
-xlabel("Frequences numériques")
-ylabel("Energie (dB)")
 
 ordre = 52;
 fPB = fir1(ordre, 2*0.025, 'low', hann(ordre+1));
-%ordre 22 pour dn = 0.05 et fc = 0.025
-%ordre 52 pour dn = 0.03
+%ordre 40 pour dn = 0.05 et fc = 0.025, sigma = 0.7
+%ordre 85 pour dn = 0.03, sigma = 0.3
 %ensuite trop petit, les autres canaux sont trop proches pour recuperer
 %l'information du central
-signalFinalDemod = filter(fPB', 1, demod);
+signalFinal = filter(fPB', 1, demod);
 
-signalFinalDemod2 = signalFinalDemod;
-signalFinalDemod2(1:delay+(ordre/2)) = [];
+signalFinal2 = signalFinal;
+signalFinal2(1:delay+(ordre/2)) = [];
 
-A = sign(downsample(signalFinalDemod2, K));
+A = downsample(sign(signalFinal2), K);
 A = A(1:length(r1));
 
 figure(6)
@@ -162,7 +162,7 @@ for i = 1:length(e)
     end
 end
 
-tauxErreur = nbErr/(length(e))*100;
+tauxErreur = nbErr/(length(e))*100
 
 figure(7)
 stem(e, 'x')
